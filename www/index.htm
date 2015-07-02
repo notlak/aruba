@@ -1,0 +1,410 @@
+<!--DOCTYPE html-->
+<!--DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"-->
+<!--html xmlns="http://www.w3.org/1999/xhtml"-->
+<html>
+<head>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <script type="text/javascript"
+            src="https://www.google.com/jsapi?autoload={
+            'modules':[{
+              'name':'visualization',
+              'version':'1',
+              'packages':['corechart']
+            }]
+          }">
+    </script>
+
+    <title>Temperatures</title>
+    <!--
+    <link rel="stylesheet" type="text/css" href="style.css"/>
+    <link rel="stylesheet" type="text/css" href="tooltip.css"/>
+    -->
+</head>
+
+<body>
+
+    <div id="temperatures">
+
+        <div id="panel1" class="tempPanel">
+            <div id="location1" class="panelHeader">Location</div>
+            <div class="panelBody"><span class="thermSpan"><img src="thermometer.png"/></span><span id="temp1" class="tempSpan">00.0&deg;C</span></div>
+            <div id="timestamp1" class="panelFooter">xxxx-xx-xx xx:xx:xx</div>
+        </div>
+      
+        <div id="panel2" class="tempPanel">
+            <div id="location2" class="panelHeader">Location</div>
+            <div class="panelBody"><span class="thermSpan"><img src="thermometer.png"/></span><span id="temp2" class="tempSpan">00.0&deg;C</span></div>
+            <div id="timestamp2" class="panelFooter">xxxx-xx-xx xx:xx:xx</div>
+        </div>
+
+        <div id="panel3" class="tempPanel">
+            <div id="location3" class="panelHeader">Location</div>
+            <div class="panelBody"><span class="thermSpan"><img src="thermometer.png"/></span><span id="temp3" class="tempSpan">00.0&deg;C</span></div>
+            <div id="timestamp3" class="panelFooter">xxxx-xx-xx xx:xx:xx</div>
+        </div>
+      
+        <div class="clearDiv"></div>
+
+        <p></p>
+
+        <!--table id="tempTable"></table-->
+
+        <p></p>
+
+        <!--<p><span id="latestTemp">???</span> at <span id="latestTempTime">???</span></p>-->
+        <!--p>Duration:
+        <select id="durationCombo">
+            <option value="1">1 hour</option>
+            <option value="6" selected>6 hours</option>
+            <option value="12">12 hours</option>
+            <option value="24">1 day</option>
+            <option value="168">1 week</option>
+        </select>
+        <button onclick="onUpdate()">Update</button>
+        </p-->
+    </div>
+
+    <!--span>1 hour</span> <span id="toggle6h" class="toggle" onclick="onToggleButton(this)">6 hours</span> <span>12 hours</span-->
+
+    <div id="radioToggles"></div>
+
+    <div id="chart_div"></div>
+
+
+<script type="text/javascript">
+
+    // keep a copy of the sensors xml document
+    var SensorXml = null;
+
+    function drawChart(tempArray)
+    {
+        var data = new google.visualization.DataTable();
+        /*
+        data.addColumn('number', 'X');
+        data.addColumn('number', 'Dogs');
+        //data.addColumn('number', 'Cats');
+
+        data.addRows([
+          [0, 0, 0], [1, 10, 5], [2, 23, 15], [3, 17, 9], [4, 18, 10], [5, 9, 5],
+          [6, 11, 3], [7, 27, 19], [8, 33, 25], [9, 40, 32], [10, 32, 24], [11, 35, 27],
+          [12, 30, 22], [13, 40, 32], [14, 42, 34], [15, 47, 39], [16, 44, 36], [17, 48, 40],
+          [18, 52, 44], [19, 54, 46], [20, 42, 34], [21, 55, 47], [22, 56, 48], [23, 57, 49],
+          [24, 60, 52], [25, 50, 42], [26, 52, 44], [27, 51, 43], [28, 49, 41], [29, 53, 45],
+          [30, 55, 47], [31, 60, 52], [32, 61, 53], [33, 59, 51], [34, 62, 54], [35, 65, 57],
+          [36, 62, 54], [37, 58, 50], [38, 55, 47], [39, 61, 53], [40, 64, 56], [41, 65, 57],
+          [42, 63, 55], [43, 66, 58], [44, 67, 59], [45, 69, 61], [46, 69, 61], [47, 70, 62],
+          [48, 72, 64], [49, 68, 60], [50, 66, 58], [51, 65, 57], [52, 67, 59], [53, 70, 62],
+          [54, 71, 63], [55, 72, 64], [56, 73, 65], [57, 75, 67], [58, 70, 62], [59, 68, 60],
+          [60, 64, 56], [61, 60, 52], [62, 65, 57], [63, 67, 59], [64, 68, 60], [65, 69, 61],
+          [66, 70, 62], [67, 72, 64], [68, 75, 67], [69, 80, 72]
+        ]);
+
+        var options = {
+            hAxis: {
+                title: 'Time',
+                logScale: true
+            },
+            vAxis: {
+                title: 'Popularity',
+                logScale: false
+            },
+            colors: ['#a52714', '#097138']
+        };
+        */
+
+        var data = google.visualization.arrayToDataTable(tempArray);
+
+        var options = {
+            title: '',
+            //curveType: 'function',
+            legend: { position: 'right', textStyle: { color: '#ffffff' } },
+            width: 900,
+            height: 600,
+            vAxis: { title: '°C'/*minValue:15, maxValue:35*/ },
+            backgroundColor: { fill: '#000040' },
+            hAxis: { color: '#ffffff', baselineColor: '#ffffff', textStyle: { color: '#ffffff' } },
+            vAxis: { color: '#ffffff', baselineColor: '#ffffff', textStyle: { color: '#ffffff' } }
+            //hAxis: { gridlines: { count: -1 }}
+        };
+
+        var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+        chart.draw(data, options);
+    }
+
+    function requestTemperatures()
+    {
+        //var durationCombo = document.getElementById("durationCombo");
+        //var hours = durationCombo.options[durationCombo.selectedIndex].value;
+
+        var hours = 6;
+        for (var i = 0; i < durationOptions.length; ++i) {
+            if (durationOptions[i].button.dataset.checked == 'true') {
+                hours = durationOptions[i].hours;
+                break;
+            }
+        }
+
+        var req = getXMLHttpRequest();
+        req.open("GET", "/cgi-bin/GetTemps.cgi?data=0&hours=" + hours, true);
+        req.onreadystatechange = recvTemperaturesResponse;
+        req.send();
+    }
+
+    function requestChartData(showMsg)
+    {
+        //var durationCombo = document.getElementById("durationCombo");
+        //var hours = durationCombo.options[durationCombo.selectedIndex].value;
+
+        var hours = 6;
+        for (var i = 0; i < durationOptions.length; ++i)
+        {
+            if (durationOptions[i].button.dataset.checked == 'true')
+            {
+                hours = durationOptions[i].hours;
+                break;
+            }
+        }
+
+        var req = getXMLHttpRequest();
+        req.open("GET", "/cgi-bin/GetTemps.cgi?data=1&hours=" + hours, true);
+        req.onreadystatechange = recvChartDataResponse;
+        req.send();
+
+        if (showMsg)
+        {
+            var chartDiv = document.getElementById("chart_div");
+            chartDiv.innerHTML = "<span id=\"loadingSpan\">Loading chart data...</span>";
+        }
+    }
+
+    function getXMLHttpRequest() 
+    {
+        if (window.XMLHttpRequest) 
+            xmlhttp = new XMLHttpRequest();
+        else if (window.ActiveXObject) 
+            xmlhttp = new ActiveXObject("MSXML2.XMLHTTP.3.0");
+
+        return xmlhttp;
+    }
+
+    function recvTemperaturesResponse(e) 
+    {
+        if (this.readyState == 4)
+        {
+
+            if (this.status == 200)
+            {
+                //noConnectionDiv.style.display = "none";
+
+                var tempObj = JSON.parse(this.responseText);
+
+                // update panels
+
+                for (var i = 0; i < tempObj.sensors.length; i++)
+                {
+                    var panelIndex = i+1;
+
+                    document.getElementById("location" + panelIndex).innerHTML = tempObj.sensors[i].location;
+                    document.getElementById("temp" + panelIndex).innerHTML = tempObj.sensors[i].currentTemp.temp + "&deg;C";
+                    document.getElementById("timestamp" + panelIndex).innerHTML = tempObj.sensors[i].currentTemp.timestamp;
+                }
+
+                // now request the chart data
+
+                requestChartData(false);
+                
+                //var table = document.getElementById("tempTable");
+                //table.innerHTML = ""; // quick and dirty empty table
+                /*
+                var row = table.insertRow(0);
+
+                for (var i = 0; i < tempObj.sensors.length + 1; i++)
+                {
+                    
+                    var cell = row.insertCell(i);
+                    cell.className += " heading";
+
+                    if (i == 0)
+                    {
+                        cell.innerHTML = "Location";
+                    }   
+                    else
+                        cell.innerHTML = tempObj.sensors[i - 1].location;
+                }
+
+                row = table.insertRow(1);
+
+                for (var i = 0; i < tempObj.sensors.length + 1; i++) {
+                    cell = row.insertCell(i);
+
+                    if (i == 0)
+                    {
+                        cell.className += " heading";
+                        cell.innerHTML = "Min";
+                    }
+                    else
+                        cell.innerHTML = tempObj.sensors[i - 1].minTemp.temp + "&deg;C";
+                }
+
+                row = table.insertRow(2);
+
+                for (var i = 0; i < tempObj.sensors.length + 1; i++) {
+                    cell = row.insertCell(i);
+
+                    if (i == 0) {
+                        cell.className += " heading";
+                        cell.innerHTML = "Max";
+                    }
+                    else
+                        cell.innerHTML = tempObj.sensors[i - 1].maxTemp.temp + "&deg;C";
+                }
+
+                row = table.insertRow(3);
+
+                for (var i = 0; i < tempObj.sensors.length + 1; i++) {
+                    cell = row.insertCell(i);
+
+                    if (i == 0)
+                    {
+                        cell.className += " heading";
+                        cell.innerHTML = "Avg";
+                    }
+                    else
+                        cell.innerHTML = tempObj.sensors[i - 1].maxTemp.temp + "&deg;C";
+                }
+
+                row = table.insertRow(4);
+
+                for (var i = 0; i < tempObj.sensors.length + 1; i++) {
+                    cell = row.insertCell(i);
+
+                    if (i == 0)
+                    {
+                        cell.className += " heading";
+                        cell.innerHTML = "Update time";
+                    }
+                    else
+                        cell.innerHTML = tempObj.sensors[i - 1].currentTemp.timestamp;
+                }
+                */
+
+                //drawChart(tempObj.sensors[0].chartData);
+                //drawChart(tempObj.multilineChartData);
+            }
+            else if (this.status == 0)
+            {
+               // show that we can't get data somehow...
+            }
+        }
+    }
+
+    function recvChartDataResponse(e)
+    {
+        if (this.readyState == 4)
+        {
+            if (this.status == 200)
+            {
+                var chartDataObject = JSON.parse(this.responseText);
+                drawChart(chartDataObject.chartData);
+            }
+            else if (this.status == 0)
+            {
+                // show that we can't get data somehow...
+            }
+        }
+    }
+
+    function onTimer() 
+    {
+        requestTemperatures();
+    }
+
+    function onUpdate()
+    {
+        requestChartData(true);
+    }
+
+    function onDurationButton(b)
+    {
+        // iterate through all the other buttons and
+        // turn them off
+
+        for (var i = 0; i < durationOptions.length; ++i)
+        {
+            if (durationOptions[i].button != b)
+                durationOptions[i].button.dataset.checked = 'false';
+        }
+
+        // set the user data attribute "data-checked", the CSS will then
+        // style appropriately
+
+        b.dataset.checked = 'true';
+
+        // redraw the chart:
+
+        requestChartData(true);
+    }
+
+    function onthingyResetStatsButton()
+    {
+        var mac = document.getElementById("thingyUpdateMac").innerHTML;
+        var req = getXMLHttpRequest();
+        var url = "/cgi-bin/resetstats?mac=" + mac;
+
+        // hide the "dialog"
+        var div = document.getElementById("thingyUpdateDiv");
+        div.style.display = "none";
+
+        // send the request
+        req.open("GET", url, false);
+        req.send();
+    }
+
+    durationOptions = [
+        { label: '1 hour', hours: 1 },
+        { label: '6 hours', hours: 6 },
+        { label: '12 hours', hours: 12 },
+        { label: '1 day', hours: 24 },
+        { label: '2 days', hours: 48}
+    ];
+
+    function createToggleButtons(divName, selectedIndex)
+    {
+        var div = document.getElementById(divName);
+        for (var i = 0; i < durationOptions.length; ++i)
+        {
+            var newSpan = document.createElement('span');
+            durationOptions[i].button = newSpan;
+            newSpan.innerHTML = durationOptions[i].label;
+            newSpan.className = "radioToggle";
+            newSpan.dataset.checked = i == selectedIndex ? 'true' : 'false';
+            newSpan.onclick = function () { onDurationButton(this); };
+            div.appendChild(newSpan);
+        }
+    }
+
+    // **********************************************************
+    // *************** Main script entry point ******************
+    // **********************************************************
+
+    /*
+    var req = getXMLHttpRequest();
+    req.open("GET", "/cgi-bin/GetTemps.cgi?hours=6", false);
+    req.send();
+
+    var tempObj = JSON.parse(req.responseText);
+    document.getElementById("latestTemp").innerHTML = parseFloat(tempObj.currentTemp.temp).toFixed(1).toString() + "&deg;C";
+    document.getElementById("latestTempTime").innerHTML = tempObj.currentTemp.timestamp;
+
+    drawChart(tempObj.chartData);
+    */
+
+    createToggleButtons('radioToggles', 1);
+
+    requestTemperatures();
+    var timer = setInterval(function () { onTimer() }, 30000);
+
+</script>
+
+</body>
+</html>
