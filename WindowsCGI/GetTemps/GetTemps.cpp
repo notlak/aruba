@@ -424,7 +424,7 @@ bool SendTemperatures(int hours)
 
 		if (mysql_query(&MysqlDB, sql))
 		{
-			ReturnError("Unable to MIN temperature");
+			ReturnError("Unable to get current temperatures");
 			return false;
 		}
 
@@ -552,7 +552,71 @@ bool SendChartData(int hours)
 	return true;
 }
 
+bool SendLocationTemperature(const char* location)
+{
+	char sql[512];
+	char sensorName[256];
+	MYSQL_RES* pResult = nullptr;
 
+	sensorName[0] = '\0';
+
+	// get the location names
+
+	sprintf(sql, "SELECT sensor FROM locations WHERE location='%s'", location);
+
+	if (mysql_query(&MysqlDB, sql))
+	{
+		ReturnError("Unable to read locations");
+		return false;
+	}
+
+	pResult = mysql_store_result(&MysqlDB);
+	if (pResult)
+	{
+		MYSQL_ROW row = mysql_fetch_row(pResult);
+
+		if (row && row[0])
+		{
+			strncpy(sensorName, row[0], 256);
+			sensorName[255] = '\0';
+		}
+		mysql_free_result(pResult);
+	}
+
+	if (sensorName[0] == '\0')
+		return false;
+
+	// now get the appropriate temperature from location -> sensor name
+
+	sprintf(sql, "SELECT temp,timestamp FROM temps WHERE sensor='%s' ORDER BY timestamp DESC LIMIT 1", sensorName);
+
+	if (mysql_query(&MysqlDB, sql))
+	{
+		ReturnError("Unable to get current temperature");
+		return false;
+	}
+
+	pResult = mysql_store_result(&MysqlDB);
+
+	TempType locTemp;
+
+	if (pResult)
+	{
+		MYSQL_ROW row = mysql_fetch_row(pResult);
+		if (row && row[0] && row[1])
+		{
+			locTemp.temp = (float)atof(row[0]);
+			locTemp.timestamp = row[1];
+			locTemp.valid = true;
+		}
+		mysql_free_result(pResult);
+	}
+
+	printf("Content-Type: application/json\n\n");
+	printf(locTemp.ToJson().c_str());
+
+	return true;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // main() 
@@ -577,15 +641,25 @@ int main(int argc, char* argv[])
 
 	if (qsLen > 0 && queryString[0] != '\0')
 	{
-		int h = 0;
-		if (sscanf(queryString, "data=%d&hours=%d", &dataType, &h) == 2)
-			hours = h;
-	}
+		if (strncmp("loc=", queryString, 4) == 0)
+		{
+			// query should just be "loc=<location>"
 
-	if (dataType == 0)
-		SendTemperatures(hours);
-	else if (dataType == 1)
-		SendChartData(hours);
+			SendLocationTemperature(queryString+4);
+
+		}
+		else if (strncmp("data", queryString, 4) == 0)
+		{
+			int h = 0;
+			if (sscanf(queryString, "data=%d&hours=%d", &dataType, &h) == 2)
+				hours = h;
+
+			if (dataType == 0)
+				SendTemperatures(hours);
+			else if (dataType == 1)
+				SendChartData(hours);
+		}
+	}
 
 	mysql_close(&MysqlDB);
 
