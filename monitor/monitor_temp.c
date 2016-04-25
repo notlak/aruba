@@ -6,6 +6,7 @@
 #include <termios.h> /* POSIX terminal control definitions */
 #include <time.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 #include <sqlite3.h>
 
@@ -30,6 +31,26 @@ bool is_daemon = false;
 #define LogDebug(...) if (is_daemon) syslog(LOG_DAEMON|LOG_DEBUG, __VA_ARGS__); else printf(__VA_ARGS__)
 #define LogError(...) if (is_daemon) syslog(LOG_DAEMON|LOG_ERR, __VA_ARGS__); else printf(__VA_ARGS__)
 
+struct SwitchDetails
+{
+	unsigned short sensor; // 2 chars cast as a short
+	time_t last_on;
+	time_t last_off;
+	bool state; // on = true
+};
+
+struct SwitchAction
+{
+	unsigned short sensor; // 2 chars cast as a short
+	char action[1024];
+};
+
+const int MaxSwitches = 5;
+struct SwitchDetails Switches[MaxSwitches];
+int nSwitches = 0;
+
+struct SwitchAction SwitchActions[MaxSwitches];
+int nActions = 0;
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -227,6 +248,163 @@ bool store_battery_mysql(const char* sensor, float volts)
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
+// Functions called when a switch changes state
+
+int find_switch(const char* sensor)
+{
+	int index = -1;
+
+	for (int i = 0; i < nSwitches && index == -1; i++)
+	{
+		if (Switches[i].sensor == *(unsigned short*)sensor)
+			index = i;
+	}
+
+	return index;
+}
+
+void add_switch(const char* sensor, time_t now, bool state)
+{
+	int index = nSwitches;
+
+	Switches[index].sensor = *(unsigned short*)sensor;
+	Switches[index].last_on = state ? now : 0;
+	Switches[index].last_off = state ? 0 : now;
+
+	nSwitches++;
+}
+
+void* action_thread(void* param)
+{
+	// sensor is encoded as a short as it's actually just 2 chars
+
+	unsigned short sensor = (unsigned short)param;
+
+	for (int i = 0; i < nActions; i++)
+	{
+		if (sensor == SwitchActions[i].sensor)
+		{
+			system(SwitchActions[i].action);
+			LogDebug("Action: %s\n", SwitchActions[i].action);
+			break;
+		}
+	}
+
+}
+
+void execute_action(unsigned short sensor)
+{
+	pthread_t thread;
+
+	int ret = pthread_create(&thread, NULL, action_thread, (void *)sensor);
+}
+
+void switch_on(const char* sensor)
+{
+	struct timespec ts;
+
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+
+	bool trigger = false;
+
+	// find the switch in the array or add a new entry
+
+	int index = find_switch(sensor);
+
+	if (index == -1 && nSwitches < MaxSwitches) // not found
+	{
+		index = nSwitches;
+		add_switch(sensor, ts.tv_sec, true);
+		trigger = true;
+	}
+	else
+	{
+		if (Switches[index].state == false)
+		{			
+			if ((ts.tv_sec - Switches[index].last_on) > 5) // max rate once every 5s
+				trigger = true;
+
+			Switches[index].last_on = ts.tv_sec;
+			Switches[index].state = true;
+		}
+	}
+
+	if (trigger)
+	{
+		// do associated action
+
+		execute_action(Switches[index].sensor);
+
+		LogDebug("Switch %s turned ON\n", sensor);
+	}
+}
+
+
+void switch_off(const char* sensor)
+{
+	struct timespec ts;
+
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+
+	// find the switch in the array or add a new entry
+
+	int index = find_switch(sensor);
+
+	if (index == -1) // not found
+	{
+		add_switch(sensor, ts.tv_sec, false);
+	}
+	else
+	{
+		if (Switches[index].state == true)
+		{
+			Switches[index].last_off = ts.tv_sec;
+			Switches[index].state = false;
+		}
+	}
+
+	// currently don't do anything when switch goes off
+}
+
+// actions are stored in actions.conf in the form
+// <sensor>=<command>
+// e.g.
+// SA=echo "test message" | mail -s "Switched On" someone@somewhere.com
+
+void load_switch_actions()
+{
+	for (int i = 0; i < MaxSwitches; i++)
+	{
+		SwitchActions[i].sensor = 0;
+		SwitchActions[i].action[0] = '\0';
+	}
+
+	FILE* fin = fopen("actions.conf", "r");
+
+	const int MaxLineLen = 1024;
+
+	char line[MaxLineLen];
+
+	if (fin)
+	{
+		while (fgets(line, MaxLineLen, fin) && nActions < MaxSwitches)
+		{
+			if (strlen(line) > 3)
+			{
+				line[2] = '\0';
+				SwitchActions[nActions].sensor = *(unsigned short*)line;
+				strcpy(SwitchActions[nActions].action, &line[3]);
+				nActions++;
+			}
+		}
+
+		fclose(fin);
+	}
+
+	LogDebug("Loaded %d switch actions\n", nActions);
+}
+
+///////////////////////////////////////////////////////////////////////////////
 
 // get_llap_parameter()
 // take 'count' chars and turn into a null terminated string removing any '-'s
@@ -311,6 +489,14 @@ void handle_llap_message(const char* llap)
 		store_temperature(address, (float)atof(parameter));
 #endif
 
+	}
+	else if (strncmp(message, "SWITCHON", 8) == 0)
+	{
+		switch_on(address);
+	}
+	else if (strncmp(message, "SWITCHOFF", 9) == 0)
+	{
+		switch_off(address);
 	}
 }
 
@@ -402,6 +588,18 @@ int main(int argc, char* argv[])
 			return 1;
 		}
 	}
+
+	// initialise switch array
+
+	for (int i = 0; i < MaxSwitches; i++)
+	{
+		Switches[i].sensor = 0;
+		Switches[i].last_on = 0;
+		Switches[i].last_off = 0;
+		Switches[i].state = false;
+	}
+
+	load_switch_actions();
 
 	// open the serial port
 
