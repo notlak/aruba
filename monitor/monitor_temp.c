@@ -188,6 +188,8 @@ bool store_battery(const char* sensor, float volts)
 
 MYSQL MysqlDB;
 
+char DBHost[255] = MYSQL_HOST;
+
 bool open_database_mysql()
 {
 	if (!mysql_init(&MysqlDB))
@@ -563,7 +565,6 @@ static void skeleton_daemon()
 // main()
 ///////////////////////////////////////////////////////////////////////////////
 
-
 int main(int argc, char* argv[])
 {
 	size_t charsRead = 0;
@@ -571,12 +572,34 @@ int main(int argc, char* argv[])
 	const int MaxBuffSize = LlapMessageSize * 2;
 	char buff[MaxBuffSize];
 	int buffCount = 0;
+	int toRead = 0;
 
 	struct timespec ts;
 	time_t lastTimeReq = 0;
 
+	printf("%s [-d] [-sql <SQL server address>]\n-d: run as daemon\n-sql specify database host\n\n", argv[0]);
+
+	for (int i = 1; i < argc; i++)
+	{
+		if (strncmp(argv[i], "-d", 2) == 0)
+		{
+			is_daemon = true;
+			skeleton_daemon();
+		}
+		else if(strncmp(argv[i], "-sql", 4) == 0 && argc >= i + 2)
+		{
+			strcpy(DBHost, argv[i+1]);
+			printf("SQL host is [%s]\n", DBHost);
+			i++; // skip the argument to -sql
+		}
+
+	}
+
+/*
 	if (argc > 1)
 	{
+		char* ptr = NULL;
+		printf("argv[1]:%s argv[2:]%s\n", argv[1], argv[2]);
 		if (strncmp(argv[1], "-d", 2) == 0)
 		{
 			is_daemon = true;
@@ -584,11 +607,11 @@ int main(int argc, char* argv[])
 		}
 		else
 		{
-			printf("%s -d to run as a daemon\n", argv[0]);
+			printf("%s [-d] [-sql <SQL server address>]\n-d: run as daemon\n-sql specify database host", argv[0]);
 			return 1;
 		}
 	}
-
+*/
 	// initialise switch array
 
 	for (int i = 0; i < MaxSwitches; i++)
@@ -607,6 +630,8 @@ int main(int argc, char* argv[])
 
 	if (fd == -1)
 		return 1;
+
+	configure_port(fd);
 
 	// open the database
 
@@ -663,15 +688,16 @@ int main(int argc, char* argv[])
 		*/
 
 		usleep(1000000);
+	
+		toRead = buffCount < LlapMessageSize ? LlapMessageSize : MaxBuffSize - buffCount;
 
-		charsRead = read(fd, buff + buffCount, LlapMessageSize);
+		charsRead = read(fd, buff + buffCount, toRead);
 
-		if (charsRead > 0)
+		if (charsRead > 0 && charsRead != -1)
 		{
-
-	memcpy(debug, buff + buffCount, charsRead);
-	debug[charsRead]='\0';
-	LogDebug("Read: %d [%s]\n", charsRead, debug);
+			memcpy(debug, buff + buffCount, charsRead);
+			debug[charsRead] = '\0';
+			LogDebug("Read: %d [%s]\n", charsRead, debug);
 
 			buffCount += charsRead;
 
