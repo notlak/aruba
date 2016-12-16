@@ -1,0 +1,3 @@
+snaptime=`date +%Y%m%d-%H%M%S`
+wget --http-user admin --http-password si1iconip http://192.168.1.51/Streaming/channels/101/picture -O /mnt/NAS/DoorbellSnapshots/${snaptime}.jpg
+echo "http://88.97.76.235:8888/doorbell/${snaptime}.jpg" | mail -s "Doorbell" richard.kalton@gmail.com

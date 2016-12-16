@@ -1,0 +1,9 @@
+snaptime=`date +%Y%m%d-%H%M%S`
+longtime=`date`
+filename=/mnt/NAS/DoorbellSnapshots/${snaptime}.jpg
+count=0
+until [ -s "$filename" ] || [ $count -ge 2 ]; do
+	wget --http-user admin --http-password si1iconip http://192.168.1.51/Streaming/channels/101/picture -O "$filename"
+	(( count = count + 1 ))
+done	
+curl --data "token=atVgxx8vdJr2y1UFnzSQmaMMEtHt22&user=ucjm2MzgvDREt9QLasauT64EkVtyer&message=Pushed ${longtime}&url=http://88.97.76.235:8888/doorbell/${snaptime}.jpg" https://api.pushover.net/1/messages.json
